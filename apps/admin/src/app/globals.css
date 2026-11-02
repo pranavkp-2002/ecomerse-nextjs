@@ -1,0 +1,13 @@
+@import "tailwindcss";
+/* Shared components live outside this app, so Tailwind must scan them too */
+@source "../../../../packages/ui/src";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-zinc-50);
+  color: var(--color-zinc-900);
+}
