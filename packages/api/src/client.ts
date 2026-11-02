@@ -34,11 +34,33 @@ export class ApiError extends Error {
 }
 
 export interface ApiClientOptions {
-  /** Backend origin, e.g. http://localhost:5000 (no trailing /api). */
+  /**
+   * Backend origin, e.g. http://localhost:5000 (no trailing /api).
+   * Empty string calls /api on the page's own origin (e.g. behind a Next rewrite proxy).
+   */
   baseUrl: string;
   getToken?: () => string | null;
   /** Called when an authenticated request is rejected with 401 (expired or revoked token). */
   onUnauthorized?: () => void;
+  /** Called before every request with an equivalent curl command (for debugging). */
+  onRequest?: (curl: string) => void;
+  /** Origin used in onRequest curls when baseUrl is a proxy; defaults to the request URL. */
+  curlBaseUrl?: string;
+}
+
+const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+
+export function toCurl(
+  method: string,
+  url: string,
+  headers: Record<string, string>,
+  body?: string,
+) {
+  const parts = [`curl -X ${method} ${shellQuote(url)}`];
+  for (const [key, value] of Object.entries(headers)) parts.push(`-H ${shellQuote(`${key}: ${value}`)}`);
+  if (body !== undefined) parts.push(`--data-raw ${shellQuote(body)}`);
+  // Single line: turbo prefixes every output line with "app:dev:", which breaks multi-line copy
+  return parts.join(" ");
 }
 
 type Query = Record<string, string | number | undefined>;
@@ -65,11 +87,17 @@ const toPage = <T>(items: T[], res: Envelope): Page<T> => {
   };
 };
 
-export function createApiClient({ baseUrl, getToken, onUnauthorized }: ApiClientOptions) {
+export function createApiClient({
+  baseUrl,
+  getToken,
+  onUnauthorized,
+  onRequest,
+  curlBaseUrl,
+}: ApiClientOptions) {
   const root = `${baseUrl.replace(/\/+$/, "")}/api`;
 
   async function request(path: string, { method = "GET", body, query }: RequestOptions = {}) {
-    const url = new URL(root + path);
+    const url = new URL(root + path, globalThis.location?.origin);
     for (const [key, value] of Object.entries(query ?? {})) {
       if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
     }
@@ -79,13 +107,17 @@ export function createApiClient({ baseUrl, getToken, onUnauthorized }: ApiClient
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (token) headers.Authorization = `Bearer ${token}`;
 
+    const payload = body === undefined ? undefined : JSON.stringify(body);
+    if (onRequest) {
+      const curlUrl = curlBaseUrl
+        ? `${curlBaseUrl.replace(/\/+$/, "")}${url.pathname}${url.search}`
+        : url.toString();
+      onRequest(toCurl(method, curlUrl, headers, payload));
+    }
+
     let res: Response;
     try {
-      res = await fetch(url, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+      res = await fetch(url, { method, headers, body: payload });
     } catch {
       throw new ApiError(0, "Cannot reach the server. Check that the API is running.");
     }

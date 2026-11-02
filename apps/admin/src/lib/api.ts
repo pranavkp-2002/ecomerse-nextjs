@@ -1,12 +1,22 @@
 import { ApiError, createApiClient, createSessionStore } from "@ecomerse/api";
 
+// Dev only: print each request as curl in the browser console and,
+// via /dev/curl, in the `next dev` terminal
+function logCurl(curl: string) {
+  console.debug(curl);
+  fetch("/dev/curl", { method: "POST", body: curl }).catch(() => {});
+}
+
 export const session = createSessionStore("ecomerse.admin.session");
 
 export const api = createApiClient({
-  baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000",
+  // Same-origin /api, proxied to NEXT_PUBLIC_API_URL by next.config.ts (avoids CORS)
+  baseUrl: "",
+  curlBaseUrl: process.env.NEXT_PUBLIC_API_URL,
   getToken: session.getToken,
   // Expired or revoked token: drop it so the UI falls back to logged out
   onUnauthorized: session.clear,
+  onRequest: process.env.NODE_ENV === "development" ? logCurl : undefined,
 });
 
 export const errorMessage = (error: unknown) =>
