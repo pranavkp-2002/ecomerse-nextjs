@@ -1,7 +1,8 @@
 "use client";
 
-import { categoryId, formatPrice } from "@ecomerse/api";
-import { Alert, Button, buttonClass, Input, Loading } from "@ecomerse/ui";
+import { categoryId, formatPrice, type Product } from "@ecomerse/api";
+import { Alert, Button, buttonClass, cx, Input, Loading } from "@ecomerse/ui";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -57,9 +58,7 @@ export function ProductDetail({ id }: { id: string }) {
     <div className="space-y-6">
       <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900">← Back to shop</Link>
       <div className="grid gap-10 md:grid-cols-2">
-        <div className="flex aspect-square items-center justify-center rounded-xl bg-zinc-100 text-7xl font-semibold text-zinc-400">
-          {product.name.charAt(0).toUpperCase()}
-        </div>
+        <Gallery product={product} />
         <div className="space-y-5">
           {category && (
             <Link href={`/?category=${category._id}`} className="text-sm font-medium uppercase tracking-wide text-indigo-600">
@@ -102,6 +101,48 @@ export function ProductDetail({ id }: { id: string }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Gallery({ product }: { product: Product }) {
+  const images = product.images ?? [];
+  const [selected, setSelected] = useState(0);
+  const image = images[Math.min(selected, images.length - 1)];
+
+  if (!image) {
+    return (
+      <div className="flex aspect-square items-center justify-center rounded-xl bg-zinc-100 text-7xl font-semibold text-zinc-400">
+        {product.name.charAt(0).toUpperCase()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="relative aspect-square overflow-hidden rounded-xl bg-zinc-100">
+        <Image src={image.url} alt={product.name} fill priority sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
+      </div>
+      {images.length > 1 && (
+        <ul className="grid grid-cols-5 gap-2">
+          {images.map((img, i) => (
+            <li key={img._id}>
+              <button
+                type="button"
+                onClick={() => setSelected(i)}
+                aria-label={`Show image ${i + 1} of ${images.length}`}
+                aria-current={img === image}
+                className={cx(
+                  "relative block aspect-square w-full overflow-hidden rounded-md bg-zinc-100 ring-2",
+                  img === image ? "ring-indigo-600" : "ring-transparent hover:ring-zinc-300",
+                )}
+              >
+                <Image src={img.url} alt="" fill sizes="96px" className="object-cover" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

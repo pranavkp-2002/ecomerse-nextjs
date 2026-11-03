@@ -1,7 +1,8 @@
 "use client";
 
-import { categoryName, formatPrice, type Product } from "@ecomerse/api";
+import { categoryName, coverImage, formatPrice, type Product } from "@ecomerse/api";
 import { Alert, Button, buttonClass, cx, EmptyState, Input, Loading, Pagination, Select } from "@ecomerse/ui";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -99,25 +100,35 @@ export function ProductsView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200">
-                {data.items.map((product) => (
-                  <tr key={product._id} className="hover:bg-zinc-50">
-                    <td className="px-4 py-3">
-                      <Link href={`/products/${product._id}`} className="font-medium hover:text-indigo-700">{product.name}</Link>
-                      {product.description && <p className="max-w-md truncate text-xs text-zinc-500">{product.description}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-600">{categoryName(product) ?? <span className="text-red-600">Missing</span>}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatPrice(product.price)}</td>
-                    <td className={cx("px-4 py-3 text-right tabular-nums", product.stock < 1 ? "text-red-600" : product.stock <= 5 && "text-amber-700")}>
-                      {product.stock}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <Link href={`/products/${product._id}`} className={buttonClass("ghost", "sm")}>Edit</Link>
-                      <Button variant="ghost" size="sm" className="text-red-600" loading={deleting === product._id} onClick={() => remove(product)}>
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {data.items.map((product) => {
+                  const cover = coverImage(product);
+                  return (
+                    <tr key={product._id} className="hover:bg-zinc-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded bg-zinc-100 text-sm font-semibold text-zinc-400">
+                            {cover ? <Image src={cover} alt="" fill sizes="40px" className="object-cover" /> : product.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <Link href={`/products/${product._id}`} className="font-medium hover:text-indigo-700">{product.name}</Link>
+                            {product.description && <p className="max-w-md truncate text-xs text-zinc-500">{product.description}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-600">{categoryName(product) ?? <span className="text-red-600">Missing</span>}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatPrice(product.price)}</td>
+                      <td className={cx("px-4 py-3 text-right tabular-nums", product.stock < 1 ? "text-red-600" : product.stock <= 5 && "text-amber-700")}>
+                        {product.stock}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        <Link href={`/products/${product._id}`} className={buttonClass("ghost", "sm")}>Edit</Link>
+                        <Button variant="ghost" size="sm" className="text-red-600" loading={deleting === product._id} onClick={() => remove(product)}>
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

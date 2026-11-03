@@ -8,6 +8,7 @@ import type {
   Page,
   PageQuery,
   Product,
+  ProductImage,
   ProductInput,
   ProductQuery,
   User,
@@ -54,11 +55,17 @@ export function toCurl(
   method: string,
   url: string,
   headers: Record<string, string>,
-  body?: string,
+  body?: string | FormData,
 ) {
   const parts = [`curl -X ${method} ${shellQuote(url)}`];
   for (const [key, value] of Object.entries(headers)) parts.push(`-H ${shellQuote(`${key}: ${value}`)}`);
-  if (body !== undefined) parts.push(`--data-raw ${shellQuote(body)}`);
+  if (typeof body === "string") parts.push(`--data-raw ${shellQuote(body)}`);
+  else if (body) {
+    // Files can't be inlined; reference them by name so the command shows what was sent
+    for (const [key, value] of body) {
+      parts.push(`-F ${shellQuote(typeof value === "string" ? `${key}=${value}` : `${key}=@${value.name}`)}`);
+    }
+  }
   // Single line: turbo prefixes every output line with "app:dev:", which breaks multi-line copy
   return parts.join(" ");
 }
@@ -67,6 +74,7 @@ type Query = Record<string, string | number | undefined>;
 
 interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  /** FormData is sent as multipart; anything else as JSON. */
   body?: unknown;
   query?: Query;
 }
@@ -104,10 +112,12 @@ export function createApiClient({
 
     const token = getToken?.();
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    const multipart = body instanceof FormData;
+    // For FormData, fetch sets Content-Type itself, including the multipart boundary
+    if (body !== undefined && !multipart) headers["Content-Type"] = "application/json";
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const payload = body === undefined ? undefined : JSON.stringify(body);
+    const payload = body === undefined ? undefined : multipart ? body : JSON.stringify(body);
     if (onRequest) {
       const curlUrl = curlBaseUrl
         ? `${curlBaseUrl.replace(/\/+$/, "")}${url.pathname}${url.search}`
@@ -172,8 +182,19 @@ export function createApiClient({
 
       get: async (id: string) => (await request(`/products/${id}`)).product as Product,
 
-      create: async (input: ProductInput) =>
-        (await request("/products", { method: "POST", body: input })).prodcut as Product,
+      /** With images, the product is sent as multipart and only created if every upload succeeds. */
+      create: async (input: ProductInput, images: File[] = []) => {
+        let body: ProductInput | FormData = input;
+        if (images.length) {
+          body = new FormData();
+          for (const [key, value] of Object.entries(input)) {
+            if (value !== undefined) body.append(key, String(value));
+          }
+          for (const image of images) body.append("images", image);
+        }
+        // The backend misspells the key
+        return (await request("/products", { method: "POST", body })).prodcut as Product;
+      },
 
       update: async (id: string, input: Partial<ProductInput>) =>
         (await request(`/products/${id}`, { method: "PUT", body: input }))
@@ -181,6 +202,17 @@ export function createApiClient({
 
       remove: async (id: string) => {
         await request(`/products/${id}`, { method: "DELETE" });
+      },
+
+      /** Appends to the product's existing images (at most MAX_PRODUCT_IMAGES in total). */
+      addImages: async (id: string, images: File[]) => {
+        const body = new FormData();
+        for (const image of images) body.append("images", image);
+        return (await request(`/products/${id}/images`, { method: "POST", body })).product as Product;
+      },
+
+      removeImage: async (id: string, imageId: ProductImage["_id"]) => {
+        await request(`/products/${id}/images/${imageId}`, { method: "DELETE" });
       },
     },
 

@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${apiUrl}/api/:path*` }];
   },
+  // Product images are hosted on Cloudinary
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com", pathname: "/*/image/upload/**" }],
+  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

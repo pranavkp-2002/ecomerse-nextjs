@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { PageHeader } from "@/components/page-header";
+import { ImagePicker, ProductImages } from "@/components/products/product-images";
 import { api, errorMessage, fieldErrors } from "@/lib/api";
 
 export function EditProduct({ id }: { id: string }) {
@@ -22,6 +23,8 @@ export function ProductForm({ product }: { product?: Product }) {
   const { data: categories, error: categoriesError } = useSWR("categories", () => api.categories.list());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  // New products only; an existing product's images are managed by <ProductImages>
+  const [images, setImages] = useState<File[]>([]);
   const errors = fieldErrors(error);
 
   const currentCategory = typeof product?.category === "object" ? product.category._id : product?.category;
@@ -41,7 +44,7 @@ export function ProductForm({ product }: { product?: Product }) {
     setError(null);
     try {
       if (product) await api.products.update(product._id, input);
-      else await api.products.create(input);
+      else await api.products.create(input, images);
       // Lists, totals and this product's own cache entry are all stale now
       await mutate((key) => Array.isArray(key) && String(key[0]).startsWith("admin-product"), undefined);
       router.push("/products");
@@ -52,7 +55,7 @@ export function ProductForm({ product }: { product?: Product }) {
   };
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl space-y-6">
       <PageHeader title={product ? `Edit ${product.name}` : "New product"} />
       <form onSubmit={submit} className="space-y-5 rounded-lg border border-zinc-200 bg-white p-6">
         {error != null && <Alert>{errorMessage(error)}</Alert>}
@@ -87,6 +90,7 @@ export function ProductForm({ product }: { product?: Product }) {
             </Select>
           </Field>
         </div>
+        {!product && <ImagePicker files={images} onChange={setImages} />}
         <div className="flex gap-3">
           <Button type="submit" loading={submitting}>
             {product ? "Save changes" : "Create product"}
@@ -94,6 +98,7 @@ export function ProductForm({ product }: { product?: Product }) {
           <Link href="/products" className={buttonClass("secondary")}>Cancel</Link>
         </div>
       </form>
+      {product && <ProductImages product={product} />}
     </div>
   );
 }

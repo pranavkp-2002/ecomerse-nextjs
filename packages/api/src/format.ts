@@ -12,3 +12,6 @@ export const categoryName = (product: Pick<Product, "category">) =>
 
 export const categoryId = (product: Pick<Product, "category">) =>
   typeof product.category === "string" ? product.category : product.category._id;
+
+/** First image's URL, or null. `?.` covers backends deployed before image upload existed. */
+export const coverImage = (product: Pick<Product, "images">) => product.images?.[0]?.url ?? null;

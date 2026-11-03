@@ -31,6 +31,13 @@ export interface Category {
 
 export type CategoryRef = Pick<Category, "_id" | "name" | "description">;
 
+/** Hosted on Cloudinary. Pass `_id` (not `publicId`) to the delete-image endpoint. */
+export interface ProductImage {
+  _id: string;
+  url: string;
+  publicId: string;
+}
+
 export interface Product {
   _id: string;
   name: string;
@@ -39,6 +46,8 @@ export interface Product {
   /** Populated on the list endpoint, a bare id everywhere else. */
   category: string | CategoryRef;
   stock: number;
+  /** Empty for products created before image upload existed. */
+  images: ProductImage[];
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +59,11 @@ export interface ProductInput {
   category: string;
   stock?: number;
 }
+
+// Upload limits enforced by the API
+export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_PRODUCT_IMAGES = 5;
 
 export type ProductSort = "price_asc" | "price_desc" | "newest";
 
