@@ -7,7 +7,10 @@ function logCurl(curl: string) {
   fetch("/dev/curl", { method: "POST", body: curl }).catch(() => {});
 }
 
-export const session = createSessionStore("ecomerse.admin.session");
+/** Cookie mirroring the token so src/proxy.ts can redirect signed-out visitors */
+export const SESSION_COOKIE = "ecomerse_admin_token";
+
+export const session = createSessionStore("ecomerse.admin.session", { cookie: SESSION_COOKIE });
 
 export const api = createApiClient({
   // Same-origin /api, proxied to NEXT_PUBLIC_API_URL by next.config.ts (avoids CORS)

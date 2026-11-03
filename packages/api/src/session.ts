@@ -11,8 +11,11 @@ type Listener = (session: Session | null) => void;
  * Persists the JWT and logged-in user in localStorage under `key` and notifies
  * subscribers on change (including changes from other tabs). Each app uses its
  * own key so a storefront login never grants the admin panel a session.
+ *
+ * With `cookie`, the token is mirrored into that cookie so server code (e.g. a
+ * Next.js proxy) can see whether the user is signed in.
  */
-export function createSessionStore(key: string) {
+export function createSessionStore(key: string, options: { cookie?: string } = {}) {
   const listeners = new Set<Listener>();
   let cachedRaw: string | null | undefined;
   let cached: Session | null = null;
@@ -42,6 +45,10 @@ export function createSessionStore(key: string) {
       else window.localStorage.removeItem(key);
     } catch {
       // Ignore: the session just won't survive a reload
+    }
+    if (options.cookie) {
+      const value = session ? `${encodeURIComponent(session.token)}; Max-Age=${60 * 60 * 24 * 30}` : "; Max-Age=0";
+      document.cookie = `${options.cookie}=${value}; Path=/; SameSite=Lax`;
     }
     listeners.forEach((listener) => listener(read()));
   };
