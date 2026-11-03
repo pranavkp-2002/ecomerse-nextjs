@@ -2,12 +2,75 @@
 /* Shared components live outside this app, so Tailwind must scan them too */
 @source "../../../../packages/ui/src";
 
+/* Storefront design tokens */
+:root {
+  --surface: #ffffff;
+  --surface-subtle: #f5f6f8;
+  --skeleton: #eceef2;
+  --line: #e3e6eb;
+  --line-strong: #858c99;
+  --ink: #14171c;
+  --ink-muted: #59606c;
+  --primary: #2a46d1;
+  --primary-hover: #1e36ad;
+  --primary-soft: #ebeffd;
+  --success: #13703a;
+  --success-soft: #e4f4ea;
+  --warning: #8a4f00;
+  --warning-soft: #fdf0da;
+  --danger: #c0252d;
+  --danger-soft: #fde8e8;
+}
+
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-figtree), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-geist-mono);
+
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-skeleton: var(--skeleton);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --shadow-card: 0 1px 2px rgba(20, 23, 28, 0.06), 0 1px 3px rgba(20, 23, 28, 0.08);
+  --shadow-pop: 0 4px 16px rgba(20, 23, 28, 0.1);
+}
+
+/* Page-width container shared by header, footer and pages */
+@utility page-wrap {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 16px;
+  @media (width >= 64rem) {
+    padding-inline: 32px;
+  }
 }
 
 body {
-  background: var(--color-zinc-50);
-  color: var(--color-zinc-900);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
