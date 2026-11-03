@@ -88,6 +88,17 @@ export function ProductDetail({ id }: { id: string }) {
     }
   };
 
+  const setCartQuantity = async (item: Product, quantity: number) => {
+    try {
+      if (quantity > 0) await api.cart.update(item._id, quantity);
+      else await api.cart.remove(item._id);
+    } catch (err) {
+      showToast({ tone: "error", text: errorMessage(err) });
+    } finally {
+      await refreshCart();
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <nav aria-label="Breadcrumb">
@@ -124,8 +135,12 @@ export function ProductDetail({ id }: { id: string }) {
 
           <hr className="border-line" />
 
-          {/* key resets the chosen quantity when navigating to a related product */}
-          <AddToCart key={product._id} stock={product.stock} onAdd={(quantity) => addToCart(product, quantity)} />
+          <AddToCart
+            key={product._id}
+            product={product}
+            onAdd={() => addToCart(product, 1)}
+            onQuantity={(quantity) => setCartQuantity(product, quantity)}
+          />
 
           <div className="flex flex-col gap-2.5 rounded-xl bg-surface-subtle p-4 text-[13px] leading-[18px]">
             <p className="flex items-center gap-2.5"><TruckIcon size={20} /> Shipping calculated at checkout</p>
@@ -151,7 +166,7 @@ export function ProductDetail({ id }: { id: string }) {
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-5">
             {others.map((p) => (
-              <ProductCard key={p._id} product={p} onAdd={(item) => addToCart(item, 1)} />
+              <ProductCard key={p._id} product={p} onAdd={(item) => addToCart(item, 1)} onQuantity={setCartQuantity} />
             ))}
           </div>
         </section>
@@ -177,60 +192,78 @@ function StockBadge({ stock }: { stock: number }) {
   );
 }
 
-function AddToCart({ stock, onAdd }: { stock: number; onAdd: (quantity: number) => Promise<void> }) {
-  const [chosen, setQuantity] = useState(1);
-  const [adding, setAdding] = useState(false);
+function AddToCart({
+  product,
+  onAdd,
+  onQuantity,
+}: {
+  product: Product;
+  onAdd: () => Promise<void>;
+  /** Sets the in-cart quantity; 0 removes the line. */
+  onQuantity: (quantity: number) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const { data: cart } = useCart();
+  const inCart = cart?.items.find((line) => line.product._id === product._id)?.quantity ?? 0;
+  const { stock } = product;
   const out = stock < 1;
-  // Stock can drop below the chosen quantity when SWR revalidates
-  const quantity = Math.max(1, Math.min(chosen, stock));
 
-  const add = async () => {
-    setAdding(true);
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
     try {
-      await onAdd(quantity);
+      await action();
     } finally {
-      setAdding(false);
+      setBusy(false);
     }
   };
 
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <p id="qty-label" className="text-sm leading-5 font-semibold">Quantity</p>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap gap-3">
+        {inCart > 0 ? (
           <div
             role="group"
-            aria-labelledby="qty-label"
-            className="inline-flex h-11 items-center rounded-lg border border-line-strong bg-surface"
+            aria-label={`Quantity of ${product.name} in cart`}
+            className="flex h-[52px] flex-[1_1_240px] items-center justify-between rounded-lg border border-line-strong bg-surface px-1"
           >
-            <button type="button" aria-label="Decrease quantity" disabled={out || quantity <= 1} onClick={() => setQuantity(quantity - 1)} className={stepClass}>
+            <button
+              type="button"
+              aria-label={inCart === 1 ? "Remove from cart" : "Decrease quantity"}
+              disabled={busy}
+              onClick={() => run(() => onQuantity(inCart - 1))}
+              className={stepClass}
+            >
               <MinusIcon size={18} />
             </button>
-            <span aria-live="polite" className="min-w-9 text-center text-[15px] font-semibold tabular-nums">
-              {quantity}
+            <span aria-live="polite" className="flex min-w-9 justify-center text-base font-semibold tabular-nums">
+              {busy ? <Spinner className="size-[18px]" /> : inCart}
             </span>
-            <button type="button" aria-label="Increase quantity" disabled={out || quantity >= stock} onClick={() => setQuantity(quantity + 1)} className={stepClass}>
+            <button
+              type="button"
+              aria-label="Increase quantity"
+              disabled={busy || inCart >= stock}
+              onClick={() => run(() => onQuantity(inCart + 1))}
+              className={stepClass}
+            >
               <PlusIcon size={18} />
             </button>
           </div>
-          {!out && quantity >= stock && <p className="text-[13px] leading-[18px] text-ink-muted">Maximum available</p>}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={add}
-          disabled={out || adding}
-          aria-busy={adding}
-          className={cx(primaryBtn, "min-h-[52px] flex-[1_1_240px] text-base")}
-        >
-          {adding ? <Spinner className="size-[18px]" /> : <CartIcon size={20} />}
-          Add to cart
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => run(onAdd)}
+            disabled={out || busy}
+            aria-busy={busy}
+            className={cx(primaryBtn, "min-h-[52px] flex-[1_1_240px] text-base")}
+          >
+            {busy ? <Spinner className="size-[18px]" /> : <CartIcon size={20} />}
+            Add to cart
+          </button>
+        )}
         <Link href="/cart" className={cx(secondaryBtn, "min-h-[52px]")}>View cart</Link>
       </div>
       {out && <p className="-mt-2 text-[13px] leading-[18px] text-ink-muted">This product is out of stock right now.</p>}
+      {!out && inCart >= stock && <p className="-mt-2 text-[13px] leading-[18px] text-ink-muted">Maximum available in cart</p>}
     </>
   );
 }

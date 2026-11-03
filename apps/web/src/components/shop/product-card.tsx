@@ -5,21 +5,36 @@ import { cx, Spinner } from "@ecomerse/ui";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { CartIcon, ImageIcon } from "../icons";
+import { useCart } from "@/lib/cart";
+import { CartIcon, ImageIcon, MinusIcon, PlusIcon } from "../icons";
 
-export function ProductCard({ product, onAdd }: { product: Product; onAdd: (product: Product) => Promise<void> }) {
-  const [adding, setAdding] = useState(false);
+const stepClass =
+  "flex h-[42px] w-11 items-center justify-center rounded-lg text-ink hover:not-disabled:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-45";
+
+export function ProductCard({
+  product,
+  onAdd,
+  onQuantity,
+}: {
+  product: Product;
+  onAdd: (product: Product) => Promise<void>;
+  /** Sets the in-cart quantity; 0 removes the line. */
+  onQuantity: (product: Product, quantity: number) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const { data: cart } = useCart();
+  const inCart = cart?.items.find((line) => line.product._id === product._id)?.quantity ?? 0;
   const category = categoryName(product);
   const cover = coverImage(product);
   const out = product.stock < 1;
   const href = `/products/${product._id}`;
 
-  const add = async () => {
-    setAdding(true);
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
     try {
-      await onAdd(product);
+      await action();
     } finally {
-      setAdding(false);
+      setBusy(false);
     }
   };
 
@@ -68,15 +83,45 @@ export function ProductCard({ product, onAdd }: { product: Product; onAdd: (prod
             </span>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={add}
-          disabled={out || adding}
-          className="mt-auto inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-3.5 text-sm font-semibold whitespace-nowrap text-ink transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          {adding ? <Spinner className="size-4" /> : <CartIcon size={18} className="hidden lg:inline" />}
-          Add to cart
-        </button>
+        {inCart > 0 ? (
+          <div
+            role="group"
+            aria-label={`Quantity of ${product.name} in cart`}
+            className="mt-auto flex h-11 w-full items-center justify-between rounded-lg border border-line-strong bg-surface"
+          >
+            <button
+              type="button"
+              aria-label={inCart === 1 ? "Remove from cart" : "Decrease quantity"}
+              disabled={busy}
+              onClick={() => run(() => onQuantity(product, inCart - 1))}
+              className={stepClass}
+            >
+              <MinusIcon size={18} />
+            </button>
+            <span aria-live="polite" className="flex min-w-9 justify-center text-[15px] font-semibold tabular-nums">
+              {busy ? <Spinner className="size-4" /> : inCart}
+            </span>
+            <button
+              type="button"
+              aria-label="Increase quantity"
+              disabled={busy || inCart >= product.stock}
+              onClick={() => run(() => onQuantity(product, inCart + 1))}
+              className={stepClass}
+            >
+              <PlusIcon size={18} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => run(() => onAdd(product))}
+            disabled={out || busy}
+            className="mt-auto inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3.5 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:not-disabled:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {busy ? <Spinner className="size-4" /> : <CartIcon size={18} className="hidden lg:inline" />}
+            Add to cart
+          </button>
+        )}
       </div>
     </article>
   );

@@ -159,6 +159,17 @@ export function ProductBrowser() {
     }
   };
 
+  const setCartQuantity = async (item: Product, quantity: number) => {
+    try {
+      if (quantity > 0) await api.cart.update(item._id, quantity);
+      else await api.cart.remove(item._id);
+    } catch (err) {
+      showToast({ tone: "error", text: errorMessage(err) });
+    } finally {
+      await refreshCart();
+    }
+  };
+
   const allCategories = [{ _id: "", name: "All" }, ...(categories ?? [])];
   const activeCategory = query.category ?? "";
   const sortSelect = (className: string, labelled: boolean) => (
@@ -290,7 +301,7 @@ export function ProductBrowser() {
                 </button>
               </StateBox>
             ) : (
-              data.items.map((product) => <ProductCard key={product._id} product={product} onAdd={addToCart} />)
+              data.items.map((product) => <ProductCard key={product._id} product={product} onAdd={addToCart} onQuantity={setCartQuantity} />)
             )}
           </div>
           {data && <Pagination page={data.page} totalPages={data.totalPages} onChange={changePage} />}
