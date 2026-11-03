@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { Loading } from "@ecomerse/ui";
 import { Suspense } from "react";
-import { AuthForm } from "@/components/auth/auth-form";
+import { AuthCardSkeleton, AuthForm } from "@/components/auth/auth-form";
 
 export const metadata: Metadata = { title: "Log in" };
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<Loading />}>
+    <Suspense fallback={<AuthCardSkeleton />}>
       <AuthForm mode="login" />
     </Suspense>
   );

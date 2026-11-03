@@ -9,13 +9,25 @@ function logCurl(curl: string) {
 
 export const session = createSessionStore("ecomerse.web.session");
 
+// Set when the API rejects the token, so login can say "Session expired" rather than
+// treating it like a first visit. Cleared on the next login.
+let expired = false;
+export const sessionExpired = () => expired;
+export const startSession = (next: Parameters<typeof session.set>[0]) => {
+  expired = false;
+  session.set(next);
+};
+
 export const api = createApiClient({
   // Same-origin /api, proxied to NEXT_PUBLIC_API_URL by next.config.ts (avoids CORS)
   baseUrl: "",
   curlBaseUrl: process.env.NEXT_PUBLIC_API_URL,
   getToken: session.getToken,
   // Expired or revoked token: drop it so the UI falls back to logged out
-  onUnauthorized: session.clear,
+  onUnauthorized: () => {
+    expired = true;
+    session.clear();
+  },
   onRequest: process.env.NODE_ENV === "development" ? logCurl : undefined,
 });
 

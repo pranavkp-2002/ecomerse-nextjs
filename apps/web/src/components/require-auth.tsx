@@ -3,6 +3,7 @@
 import { Loading } from "@ecomerse/ui";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import { sessionExpired } from "@/lib/api";
 import { useHydrated, useSession } from "@/lib/session";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
@@ -14,7 +15,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     if (hydrated && !current) {
       // Read the URL here rather than via usePathname, which would make every guarded route block on it
       const here = window.location.pathname + window.location.search;
-      router.replace(`/login?next=${encodeURIComponent(here)}`);
+      const reason = sessionExpired() ? "reason=expired&" : "";
+      router.replace(`/login?${reason}next=${encodeURIComponent(here)}`);
     }
   }, [hydrated, current, router]);
 

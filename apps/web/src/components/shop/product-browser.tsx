@@ -2,16 +2,17 @@
 
 import type { Product, ProductQuery, ProductSort } from "@ecomerse/api";
 import { cx } from "@ecomerse/ui";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useState } from "react";
 import useSWR from "swr";
 import { api, errorMessage } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { useSession } from "@/lib/session";
 import { iconButtonClass } from "../header";
-import { AlertIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, FilterIcon, SearchIcon } from "../icons";
+import { AlertIcon, ChevronLeftIcon, ChevronRightIcon, FilterIcon, SearchIcon } from "../icons";
+import { pageList } from "@/lib/page-list";
 import { ProductCard } from "./product-card";
+import { ToastView, useToast } from "./toast";
 
 const SORTS: { value: ProductSort | ""; label: string }[] = [
   { value: "", label: "Featured" },
@@ -26,16 +27,6 @@ const secondaryBtn =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-5 text-[15px] font-semibold text-ink hover:bg-surface-subtle";
 const inputClass =
   "block h-11 w-full rounded-lg border border-line-strong bg-surface px-3 text-[15px] text-ink placeholder:text-ink-muted";
-
-/** Page numbers with gaps, e.g. 1 … 4 5 6 … 12 */
-function pageList(page: number, total: number): (number | "gap")[] {
-  const pages: (number | "gap")[] = [];
-  for (let i = 1; i <= total; i++) {
-    if (i === 1 || i === total || Math.abs(i - page) <= 1) pages.push(i);
-    else if (pages.at(-1) !== "gap") pages.push("gap");
-  }
-  return pages;
-}
 
 function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
   if (totalPages <= 1) return null;
@@ -91,20 +82,6 @@ function StateBox({ icon, title, children }: { icon: React.ReactNode; title: str
   );
 }
 
-type Toast = { tone: "success" | "error"; text: string };
-
-function useToast() {
-  const [toast, setToast] = useState<Toast | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const show = (next: Toast) => {
-    setToast(next);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), 4000);
-  };
-  return [toast, show] as const;
-}
-
 export function ProductBrowser() {
   const params = useSearchParams();
   const router = useRouter();
@@ -112,7 +89,7 @@ export function ProductBrowser() {
   const current = useSession();
   const { mutate: refreshCart } = useCart();
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [toast, showToast] = useToast();
+  const [toast, showToast, dismissToast] = useToast();
 
   const num = (key: string) => {
     const value = params.get(key);
@@ -170,13 +147,13 @@ export function ProductBrowser() {
   const addToCart = async (product: Product) => {
     if (!current) {
       const here = params.toString() ? `${pathname}?${params}` : pathname;
-      router.push(`/login?next=${encodeURIComponent(here)}`);
+      router.push(`/login?reason=cart&next=${encodeURIComponent(here)}`);
       return;
     }
     try {
       await api.cart.add(product._id, 1);
       await refreshCart();
-      showToast({ tone: "success", text: `Added to cart · ${product.name}` });
+      showToast({ tone: "success", title: "Added to cart", text: product.name });
     } catch (err) {
       showToast({ tone: "error", text: errorMessage(err) });
     }
@@ -320,34 +297,7 @@ export function ProductBrowser() {
         </section>
       </div>
 
-      <div
-        role="status"
-        aria-live="polite"
-        className={cx(
-          "fixed inset-x-4 top-4 z-50 flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3.5 shadow-pop transition-[transform,opacity] duration-200 ease-out",
-          "lg:inset-x-auto lg:top-auto lg:right-8 lg:bottom-8 lg:w-[380px]",
-          toast ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-3 opacity-0 lg:translate-y-3",
-        )}
-      >
-        {toast && (
-          <>
-            <span
-              className={cx(
-                "flex size-7 shrink-0 items-center justify-center rounded-full",
-                toast.tone === "success" ? "bg-success-soft text-success" : "bg-danger-soft text-danger",
-              )}
-            >
-              {toast.tone === "success" ? <CheckIcon size={18} /> : <AlertIcon size={18} />}
-            </span>
-            <p className="flex-1 font-semibold">{toast.text}</p>
-            {toast.tone === "success" && (
-              <Link href="/cart" className="text-[13px] font-semibold text-primary hover:text-primary-hover">
-                View cart
-              </Link>
-            )}
-          </>
-        )}
-      </div>
+      <ToastView toast={toast} onDismiss={dismissToast} />
     </div>
   );
 }

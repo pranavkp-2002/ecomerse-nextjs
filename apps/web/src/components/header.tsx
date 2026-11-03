@@ -1,13 +1,14 @@
 "use client";
 
+import { initials } from "@ecomerse/api";
 import { cx } from "@ecomerse/ui";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import useSWR, { useSWRConfig } from "swr";
-import { api, session } from "@/lib/api";
+import useSWR from "swr";
+import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
-import { useSession } from "@/lib/session";
+import { useSession, useSignOut } from "@/lib/session";
 import { CartIcon, ChevronDownIcon, MenuIcon, SearchIcon, UserIcon } from "./icons";
 
 export const iconButtonClass =
@@ -130,12 +131,6 @@ function CategoriesMenu() {
 function AccountMenu({ name, onLogout }: { name: string; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, () => setOpen(false));
-  const initials = name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
 
   return (
     <div ref={ref} className="relative">
@@ -148,7 +143,7 @@ function AccountMenu({ name, onLogout }: { name: string; onLogout: () => void })
         className={iconButtonClass}
       >
         <span className="flex size-8 items-center justify-center rounded-full bg-primary-soft text-[13px] font-bold text-primary">
-          {initials}
+          {initials(name)}
         </span>
       </button>
       {open && (
@@ -172,8 +167,7 @@ function AccountMenu({ name, onLogout }: { name: string; onLogout: () => void })
 export function Header() {
   const current = useSession();
   const { data: cart } = useCart();
-  const { mutate } = useSWRConfig();
-  const router = useRouter();
+  const signOut = useSignOut();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const count = cart?.qtyTotal ?? 0;
@@ -186,11 +180,8 @@ export function Header() {
   }
 
   const logout = () => {
-    session.clear();
-    // Drop every cached response so the next user starts clean
-    mutate(() => true, undefined, { revalidate: false });
     setMenuOpen(false);
-    router.push("/");
+    signOut("/");
   };
 
   const mobileLinks = [

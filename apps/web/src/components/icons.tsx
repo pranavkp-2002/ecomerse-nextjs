@@ -62,3 +62,21 @@ export const AlertIcon = icon(
     <path d="M12 8v5M12 16h.01" />
   </>,
 );
+export const CloseIcon = icon(<path d="M18 6 6 18M6 6l12 12" />);
+export const MinusIcon = icon(<path d="M5 12h14" />);
+export const PlusIcon = icon(<path d="M12 5v14M5 12h14" />);
+export const TruckIcon = icon(
+  <>
+    <path d="M3 6h11v10H3zM14 9h4l3 3v4h-7" />
+    <circle cx="7" cy="18" r="2" />
+    <circle cx="17" cy="18" r="2" />
+  </>,
+);
+export const PackageIcon = icon(
+  <>
+    <path d="M21 8 12 3 3 8v8l9 5 9-5V8Z" />
+    <path d="M3 8l9 5 9-5M12 13v8" />
+  </>,
+);
+export const TrashIcon = icon(<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />);
+export const LogoutIcon = icon(<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />);

@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import { Loading } from "@ecomerse/ui";
 import { Suspense } from "react";
-import { OrderList } from "@/components/orders/order-list";
+import { ListSkeleton, OrderList } from "@/components/orders/order-list";
 import { RequireAuth } from "@/components/require-auth";
 
-export const metadata: Metadata = { title: "Orders" };
+export const metadata: Metadata = { title: "My orders" };
 
 export default function OrdersPage() {
   return (
     <RequireAuth>
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<ListSkeleton />}>
         <OrderList />
       </Suspense>
     </RequireAuth>
